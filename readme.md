@@ -1,6 +1,6 @@
 # TOSCA
 
-Web-App for Correspondence Analysis and Seriation (not only) archaeological data sets
+Web-App for Correspondence Analysis and Seriation (not only) for archaeological data sets.
 
 Find the App at [shinyapps.io](https://martinhinz.shinyapps.io/tosca/)
 ### License
