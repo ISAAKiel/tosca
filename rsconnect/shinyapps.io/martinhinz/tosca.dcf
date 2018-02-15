@@ -1,0 +1,12 @@
+name: tosca
+title: tosca
+username:
+account: martinhinz
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 282169
+bundleId: 1225186
+url: https://martinhinz.shinyapps.io/tosca/
+when: 1518730498.28668
+asMultiple: FALSE
+asStatic: FALSE
