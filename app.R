@@ -28,26 +28,26 @@ data_input_ui <- function() {
         
         # Horizontal line ----
         tags$hr(),
-        
+        fluidRow(
+          column(6,  
         # Input: Checkbox if file has header ----
-        checkboxInput("header", "Header", TRUE),
+        checkboxInput("header", "Header", TRUE)),
         
+          column(6,
         # Input: Checkbox if file has header ----
-        checkboxInput("rownames", "Rownames", TRUE),
-        
+        checkboxInput("rownames", "Rownames", TRUE))),
         # Input: Select separator ----
         radioButtons("sep", "Separator",
                      choices = c(Comma = ",",
                                  Semicolon = ";",
                                  Tab = "\t"),
-                     selected = ","),
-        
+                     selected = ",", inline = T),
         # Input: Select quotes ----
         radioButtons("quote", "Quote",
                      choices = c(None = "",
                                  "Double Quote" = '"',
                                  "Single Quote" = "'"),
-                     selected = '"'),
+                     selected = '"', inline=T),
         
         # Horizontal line ----
         tags$hr(),
@@ -56,7 +56,7 @@ data_input_ui <- function() {
         radioButtons("disp", "Display",
                      choices = c(Head = "head",
                                  All = "all"),
-                     selected = "head"),
+                     selected = "head", inline=T),
         actionButton(inputId = "go", label = "Go")
         
       ),
@@ -65,7 +65,7 @@ data_input_ui <- function() {
       mainPanel(
         
         # Output: Data file ----
-        tableOutput("contents")
+        div(style = 'overflow-x: auto', tableOutput("contents"))
       )
       
     )
@@ -78,7 +78,20 @@ seriation_ui <- function(x) {
       selectInput("seriation_method",
                   "Seriation Method",
                   choices = list("Reciprocal Averaging" = 1,
-                                 "Correspondence Analysis" = 2), selected = 1)
+                                 "Correspondence Analysis" = 2,
+                                 "Original Data" = 99),
+                  selected = 1),
+      
+      # Input: Choose dataset ----
+      selectInput("download_format_ser",
+                  "Download as:",
+                  choices = c("svg",
+                              "png",
+                              "pdf")),
+      
+      # Button
+      downloadButton("downloadSerPlot",
+                     "Download")
     ),
     mainPanel(
       # Output: Data file ----
@@ -90,38 +103,39 @@ seriation_ui <- function(x) {
 analysis_ui <- function(x) {
   sidebarLayout(
     sidebarPanel(
+      fluidRow(
+        column(6,
       numericInput("x_axis_dimension",
                    "Dimension x-axis",
                    value = 1,
-                   min=1),
+                   min=1)),
+        column(6,
       numericInput("y_axis_dimension",
                    "Dimension y-axis",
                    value = 2,
-                   min=1),
+                   min=1))),
+      fluidRow(
+      column(4,
       checkboxGroupInput("display_what",
                          "What to display",
                          choices = list("Sites"="sites",
                                         "Types"="species"),
                          selected = c("sites",
-                                      "species")),
+                                      "species"))),
+      column(4,
       checkboxGroupInput("display_how",
                          "Plot Elements",
                          choices = list("Points"="points",
                                         "Text"="text"),
                          selected = c("points",
-                                      "text")),
+                                      "text"))),
+      column(4,
       checkboxInput("spead_labels",
-                    "Spread labels"),
+                    "Spread labels"))),
       sliderInput("xlim", label = "X-Axis", min = 0, 
                   max = 1, value = c(0, 1)),
       sliderInput("ylim", label = "Y-Axis", min = 0, 
-                  max = 1, value = c(0, 1))
-    ),
-    mainPanel(
-      
-      # Output: Data file ----
-      plotOutput("plot_ca"),
-      
+                  max = 1, value = c(0, 1)),
       # Input: Choose dataset ----
       selectInput("download_format",
                   "Download as:",
@@ -132,6 +146,11 @@ analysis_ui <- function(x) {
       # Button
       downloadButton("downloadPlot",
                      "Download")
+    ),
+    mainPanel(
+      
+      # Output: Data file ----
+      plotOutput("plot_ca")
     )
   )
 }
@@ -211,12 +230,26 @@ server <- function(input, output, session) {
     
     if(input$seriation_method==1)
     {
+      untidy <- TRUE
+      max_it <- 1000
+      counter <- 0
       rva <- as.matrix(df)
-    } else {
+      while(untidy & counter < max_it)
+      {
+        counter <- counter + 1
+        rva_old <- rva
+        row_ind_mean <- rowSums(t(t(rva) * 1:ncol(rva)))/rowSums(rva)
+        col_ind_mean <- colSums(rva * 1:nrow(rva))/colSums(rva)
+        rva <- rva[order(row_ind_mean),order(col_ind_mean)]
+        if(all(rva==rva_old)) tidy=TRUE
+      }
+    } else if(input$seriation_method==2)  {
       ca_result <- cca(as.matrix(df))
       order_sites <- order(scores(ca_result,1,"sites"))
       order_species <- order(scores(ca_result, 1, "species"))
       rva <- as.matrix(df[order_sites,order_species])
+    } else {
+      rva <- as.matrix(df)
     }
     return(rva)
   })
@@ -231,6 +264,45 @@ server <- function(input, output, session) {
                    quote = input$quote)
 
     rva <- cca(as.matrix(df))
+    
+    ranges <- lapply(scores(rva),function(x){apply(x,2,range)})
+    
+    x_range <- range(
+      unlist(
+        lapply(
+          ranges,
+          function(x){
+            x[,1]
+          }
+        )
+      )
+    )
+    
+    y_range <- range(
+      unlist(
+        lapply(
+          ranges,
+          function(x){
+            x[,2]
+          }
+        )
+      )
+    )
+    
+    x_range[1] <- floor(x_range[1])
+    x_range[2] <- ceiling(x_range[2])
+    y_range[1] <- floor(y_range[1])
+    y_range[2] <- ceiling(y_range[2])
+    
+    updateSliderInput(session, "xlim",
+                      min=x_range[1],
+                      max=x_range[2],
+                      value=x_range)
+    
+    updateSliderInput(session, "ylim",
+                      min=y_range[1],
+                      max=y_range[2],
+                      value=y_range)
     
     return(rva)
   })
@@ -312,23 +384,30 @@ server <- function(input, output, session) {
     #cat(file=stderr(), head(my_ser), "\n")
     
     ser.df <- data.frame(melt(my_ser))
+    colnames(ser.df) <- c("sites","types","abundance")
+    ser.df$sites <- factor(ser.df$sites)
+    ser.df$types <- factor(ser.df$types)
+    ser.df$abundance <- ifelse(ser.df$abundance==0, NA, ser.df$abundance)
     
-    ggplot(data=ser.df, aes(factor(Var1),
-                            factor(Var2),
-                            size=ifelse(value==0, NA, value))) + geom_point()
+    ggplot(data=ser.df, aes(sites,
+                            types,
+                            size=abundance)) +
+      geom_point() +
+      theme(axis.text.x = element_text(angle = 90,
+                                       hjust = 1))
   }
   
   output$plot_ca <- renderPlot({
     
     if (is.null(ca)) return()
     plot_ca(ca())
-  })
+  }, height = 800, width = 800)
   
   output$plot_ser <- renderPlot({
     
     if (is.null(ser)) return()
     plot_ser(ser())
-  })
+  }, height = 800, width = 800)
   
   output$downloadPlot <- downloadHandler(
     filename = function() {
@@ -340,6 +419,20 @@ server <- function(input, output, session) {
       ggsave(file,
              plot = plot_ca(ca()),
              device = input$download_format)
+    }
+  )
+  
+  output$downloadSerPlot <- downloadHandler(
+    filename = function() {
+      paste(input$file1$name,
+            '.',
+            input$download_format, sep='')
+    },
+    content = function(file) {
+      ggsave(file,
+             plot = plot_ser(ser()),
+             device = input$download_format_ser,
+             width = 40, height = 20, units = "cm")
     }
   )
   
