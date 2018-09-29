@@ -95,7 +95,11 @@ analysis_ui <- function(x) {
                          selected = c("points",
                                       "text")),
       checkboxInput("spead_labels",
-                    "Spread labels")
+                    "Spread labels"),
+      sliderInput("xlim", label = "X-Axis", min = 0, 
+                  max = 1, value = c(0, 1)),
+      sliderInput("ylim", label = "Y-Axis", min = 0, 
+                  max = 1, value = c(0, 1))
     ),
     mainPanel(
       
@@ -131,7 +135,7 @@ ui <- shinyUI(navbarPage(id="navbar",
                          tabPanel(id="data_input",
                                   title = "Data Input",
                                   data_input_ui()),
-                         tabPanel("Analysis",
+                         tabPanel("CA Analysis",
                                   id="analysis",
                                   analysis_ui()),
                          tabPanel("Export",
@@ -143,7 +147,7 @@ server <- function(input, output, session) {
   observeEvent(input$go, {
     updateTabsetPanel(session = session,
                       inputId = "navbar",
-                      selected = "Analysis")
+                      selected = "CA Analysis")
   })
   observe({
     updateCheckboxInput(session,
@@ -236,6 +240,22 @@ server <- function(input, output, session) {
           )
       }
     }
+    
+    x_range <- c(floor(min(test_for_ggplot$x)),
+                 ceiling(max(test_for_ggplot$x)))
+    
+    y_range <- c(floor(min(test_for_ggplot$y)),
+                 ceiling(max(test_for_ggplot$y)))
+    
+    updateSliderInput(session, "xlim",
+                      min=x_range[1],
+                      max=x_range[2])
+    
+    updateSliderInput(session, "ylim",
+                      min=y_range[1],
+                      max=y_range[2])
+    
+    my_plot <- my_plot + xlim(input$xlim) + ylim(input$ylim)
     
     my_plot
   }
