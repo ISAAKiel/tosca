@@ -31,6 +31,9 @@ data_input_ui <- function() {
         # Input: Checkbox if file has header ----
         checkboxInput("header", "Header", TRUE),
         
+        # Input: Checkbox if file has header ----
+        checkboxInput("rownames", "Rownames", TRUE),
+        
         # Input: Select separator ----
         radioButtons("sep", "Separator",
                      choices = c(Comma = ",",
@@ -159,6 +162,7 @@ server <- function(input, output, session) {
     
     df <- read.csv(input$file1$datapath,
                    header = input$header,
+                   row.names = if(input$rownames==TRUE) 1 else NULL,
                    sep = input$sep,
                    quote = input$quote)
     
@@ -169,7 +173,8 @@ server <- function(input, output, session) {
       return(df)
     }
     
-  })
+  },
+  rownames=T)
   
   ca <- eventReactive(input$go, {
     req(input$file1)
