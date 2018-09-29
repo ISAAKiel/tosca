@@ -4,6 +4,7 @@ library(ggplot2)
 library(reshape2)
 library(tidyr)
 library(ggrepel)
+library(seriation)
 
 data_input_ui <- function() {
   fluidPage(
@@ -71,6 +72,21 @@ data_input_ui <- function() {
   )
 }
 
+seriation_ui <- function(x) {
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("seriation_method",
+                  "Seriation Method",
+                  choices = list("Reciprocal Averaging" = 1,
+                                 "Correspondence Analysis" = 2), selected = 1)
+    ),
+    mainPanel(
+      # Output: Data file ----
+      plotOutput("plot_ser")
+    )
+  )
+}
+
 analysis_ui <- function(x) {
   sidebarLayout(
     sidebarPanel(
@@ -104,7 +120,7 @@ analysis_ui <- function(x) {
     mainPanel(
       
       # Output: Data file ----
-      plotOutput("plot"),
+      plotOutput("plot_ca"),
       
       # Input: Choose dataset ----
       selectInput("download_format",
@@ -138,6 +154,9 @@ ui <- shinyUI(navbarPage(id="navbar",
                          tabPanel("CA Analysis",
                                   id="analysis",
                                   analysis_ui()),
+                         tabPanel("Seriation",
+                                  id="Seriation",
+                                  seriation_ui()),
                          tabPanel("Export",
                                   download_ui())
 ))
@@ -156,6 +175,7 @@ server <- function(input, output, session) {
     shinyjs::toggleState("spead_labels",
                          'text' %in% input$display_how)
   })
+  
   output$contents <- renderTable({
     
     # input$file1 will be NULL initially. After the user selects
@@ -180,42 +200,68 @@ server <- function(input, output, session) {
   },
   rownames=T)
   
+  ser <- eventReactive(input$seriation_method, {
+    req(input$file1)
+    
+    df <- read.csv(input$file1$datapath,
+                   header = input$header,
+                   row.names = if(input$rownames==TRUE) 1 else NULL,
+                   sep = input$sep,
+                   quote = input$quote)
+    
+    if(input$seriation_method==1)
+    {
+      rva <- as.matrix(df)
+    } else {
+      ca_result <- cca(as.matrix(df))
+      order_sites <- order(scores(ca_result,1,"sites"))
+      order_species <- order(scores(ca_result, 1, "species"))
+      rva <- as.matrix(df[order_sites,order_species])
+    }
+    return(rva)
+  })
+  
   ca <- eventReactive(input$go, {
     req(input$file1)
     
     df <- read.csv(input$file1$datapath,
                    header = input$header,
+                   row.names = if(input$rownames==TRUE) 1 else NULL,
                    sep = input$sep,
                    quote = input$quote)
-    cca(as.matrix(df))
+
+    rva <- cca(as.matrix(df))
+    
+    return(rva)
   })
   
   plot_ca <- function(ca) {
-    test_for_ggplot <- melt(
+    ca_scores <- melt(
       scores(ca,
              choices = c(input$x_axis_dimension,
                          input$y_axis_dimension),
              display = input$display_what,
              scaling = 3)
     )
-    
-    test_for_ggplot<-spread(test_for_ggplot,
+
+    ca_scores<-spread(ca_scores,
                             key=Var2,
                             value = value)
+
+    test_for_ggplot <- data.frame(name = ca_scores$Var1,
+                                  x = ca_scores[,ncol(ca_scores)-1],
+                                  y=ca_scores[,ncol(ca_scores)])
     
-    test_for_ggplot <- data.frame(name = test_for_ggplot$Var1,
-                                  x = test_for_ggplot[,ncol(test_for_ggplot)-1],
-                                  y=test_for_ggplot[,ncol(test_for_ggplot)])
-    
-    test_for_ggplot$type <- if("L1" %in% names(test_for_ggplot))
+
+    test_for_ggplot$type <- if("L1" %in% names(ca_scores))
     {
-      test_for_ggplot$L1
+      ca_scores$L1
     }
     else
     {
       input$display_what
     }
-    
+
     my_plot <- ggplot(test_for_ggplot)
     
     if("points" %in% input$display_how) {
@@ -259,10 +305,29 @@ server <- function(input, output, session) {
     
     my_plot
   }
-  output$plot <- renderPlot({
+  
+  plot_ser <- function(ser) {
+    my_ser <- ser()
+    
+    #cat(file=stderr(), head(my_ser), "\n")
+    
+    ser.df <- data.frame(melt(my_ser))
+    
+    ggplot(data=ser.df, aes(factor(Var1),
+                            factor(Var2),
+                            size=ifelse(value==0, NA, value))) + geom_point()
+  }
+  
+  output$plot_ca <- renderPlot({
     
     if (is.null(ca)) return()
     plot_ca(ca())
+  })
+  
+  output$plot_ser <- renderPlot({
+    
+    if (is.null(ser)) return()
+    plot_ser(ser())
   })
   
   output$downloadPlot <- downloadHandler(
