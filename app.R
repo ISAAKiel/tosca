@@ -87,7 +87,8 @@ seriation_ui <- function(x) {
                   "Download as:",
                   choices = c("svg",
                               "png",
-                              "pdf")),
+                              "pdf",
+                              "csv")),
       
       # Button
       downloadButton("downloadSerPlot",
@@ -426,13 +427,17 @@ server <- function(input, output, session) {
     filename = function() {
       paste(input$file1$name,
             '.',
-            input$download_format, sep='')
+            input$download_format_ser, sep='')
     },
     content = function(file) {
+      if(input$download_format_ser=="csv") {
+        write.csv(ser(),file,row.names = T)
+      } else {
       ggsave(file,
              plot = plot_ser(ser()),
              device = input$download_format_ser,
              width = 40, height = 20, units = "cm")
+      }
     }
   )
   
