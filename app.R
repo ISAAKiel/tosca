@@ -5,6 +5,7 @@ library(reshape2)
 library(tidyr)
 library(ggrepel)
 library(seriation)
+library(svglite)
 
 data_input_ui <- function() {
   fluidPage(
