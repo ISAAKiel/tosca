@@ -386,8 +386,8 @@ server <- function(input, output, session) {
     
     ser.df <- data.frame(melt(my_ser))
     colnames(ser.df) <- c("sites","types","abundance")
-    ser.df$sites <- factor(ser.df$sites)
-    ser.df$types <- factor(ser.df$types)
+    ser.df$sites <- factor(ser.df$sites, levels=unique(ser.df$sites))
+    ser.df$types <- factor(ser.df$types, levels=unique(ser.df$types))
     ser.df$abundance <- ifelse(ser.df$abundance==0, NA, ser.df$abundance)
     
     ggplot(data=ser.df, aes(sites,
