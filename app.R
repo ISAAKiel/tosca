@@ -211,6 +211,8 @@ server <- function(input, output, session) {
                    sep = input$sep,
                    quote = input$quote)
     
+    df[is.na(df)] <- 0
+    
     if(input$disp == "head") {
       return(head(df))
     }
@@ -229,6 +231,7 @@ server <- function(input, output, session) {
                    row.names = if(input$rownames==TRUE) 1 else NULL,
                    sep = input$sep,
                    quote = input$quote)
+    df[is.na(df)] <- 0
     
     if(input$seriation_method==1)
     {
@@ -264,6 +267,7 @@ server <- function(input, output, session) {
                    row.names = if(input$rownames==TRUE) 1 else NULL,
                    sep = input$sep,
                    quote = input$quote)
+    df[is.na(df)] <- 0
 
     rva <- cca(as.matrix(df))
     
