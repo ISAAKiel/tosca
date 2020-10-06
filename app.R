@@ -26,17 +26,18 @@ data_input_ui <- function() {
                   accept = c("text/csv",
                              "text/comma-separated-values,text/plain",
                              ".csv")),
+        actionButton("show_cp_modal", "Import data via Copy/Paste"),
         
         # Horizontal line ----
         tags$hr(),
         fluidRow(
           column(6,  
-        # Input: Checkbox if file has header ----
-        checkboxInput("header", "Header", TRUE)),
-        
+                 # Input: Checkbox if file has header ----
+                 checkboxInput("header", "Header", TRUE)),
+          
           column(6,
-        # Input: Checkbox if file has header ----
-        checkboxInput("rownames", "Rownames", TRUE))),
+                 # Input: Checkbox if file has header ----
+                 checkboxInput("rownames", "Rownames", TRUE))),
         # Input: Select separator ----
         radioButtons("sep", "Separator",
                      choices = c(Comma = ",",
@@ -107,33 +108,33 @@ analysis_ui <- function(x) {
     sidebarPanel(
       fluidRow(
         column(6,
-      numericInput("x_axis_dimension",
-                   "Dimension x-axis",
-                   value = 1,
-                   min=1)),
+               numericInput("x_axis_dimension",
+                            "Dimension x-axis",
+                            value = 1,
+                            min=1)),
         column(6,
-      numericInput("y_axis_dimension",
-                   "Dimension y-axis",
-                   value = 2,
-                   min=1))),
+               numericInput("y_axis_dimension",
+                            "Dimension y-axis",
+                            value = 2,
+                            min=1))),
       fluidRow(
-      column(4,
-      checkboxGroupInput("display_what",
-                         "What to display",
-                         choices = list("Sites"="sites",
-                                        "Types"="species"),
-                         selected = c("sites",
-                                      "species"))),
-      column(4,
-      checkboxGroupInput("display_how",
-                         "Plot Elements",
-                         choices = list("Points"="points",
-                                        "Text"="text"),
-                         selected = c("points",
-                                      "text"))),
-      column(4,
-      checkboxInput("spead_labels",
-                    "Spread labels"))),
+        column(4,
+               checkboxGroupInput("display_what",
+                                  "What to display",
+                                  choices = list("Sites"="sites",
+                                                 "Types"="species"),
+                                  selected = c("sites",
+                                               "species"))),
+        column(4,
+               checkboxGroupInput("display_how",
+                                  "Plot Elements",
+                                  choices = list("Points"="points",
+                                                 "Text"="text"),
+                                  selected = c("points",
+                                               "text"))),
+        column(4,
+               checkboxInput("spead_labels",
+                             "Spread labels"))),
       sliderInput("xlim", label = "X-Axis", min = 0, 
                   max = 1, value = c(0, 1)),
       sliderInput("ylim", label = "Y-Axis", min = 0, 
@@ -184,6 +185,24 @@ ui <- shinyUI(navbarPage(id="navbar",
 
 # Define server logic to read selected file ----
 server <- function(input, output, session) {
+  observeEvent(input$show_cp_modal, {
+    showModal(modalDialog(
+      textAreaInput("csv_cp_input", "Spreadsheet data", placeholder = "Paste your spreadsheet data in here!"),
+      title = "Copy/Paste from spreadsheet software",
+      "This is an important message!",
+      easyClose = F,
+      footer = tagList(
+        modalButton("Cancel"),
+        actionButton("dismiss_modal", "OK")
+      )
+    ))
+  })
+  observeEvent(input$dismiss_modal,{
+    input$file1 <- read.csv(text=input$csv_cp_input, sep="\t")
+    output$console <- "Hallo Welt"
+    values$modal_closed <- T
+    removeModal()
+  })
   observeEvent(input$go, {
     updateTabsetPanel(session = session,
                       inputId = "navbar",
@@ -268,7 +287,7 @@ server <- function(input, output, session) {
                    sep = input$sep,
                    quote = input$quote)
     df[is.na(df)] <- 0
-
+    
     rva <- cca(as.matrix(df))
     
     ranges <- lapply(scores(rva),function(x){apply(x,2,range)})
@@ -321,16 +340,16 @@ server <- function(input, output, session) {
              display = input$display_what,
              scaling = 3)
     )
-
+    
     ca_scores<-spread(ca_scores,
-                            key=Var2,
-                            value = value)
-
+                      key=Var2,
+                      value = value)
+    
     test_for_ggplot <- data.frame(name = ca_scores$Var1,
                                   x = ca_scores[,ncol(ca_scores)-1],
                                   y=ca_scores[,ncol(ca_scores)])
     
-
+    
     test_for_ggplot$type <- if("L1" %in% names(ca_scores))
     {
       ca_scores$L1
@@ -339,7 +358,7 @@ server <- function(input, output, session) {
     {
       input$display_what
     }
-
+    
     my_plot <- ggplot(test_for_ggplot)
     
     if("points" %in% input$display_how) {
@@ -361,7 +380,7 @@ server <- function(input, output, session) {
           aes( x = x,
                y = y,
                label = name)
-          )
+        )
       }
     }
     
@@ -420,7 +439,7 @@ server <- function(input, output, session) {
       paste(input$file1$name,
             '.',
             input$download_format, sep='')
-      },
+    },
     content = function(file) {
       ggsave(file,
              plot = plot_ca(ca()),
@@ -438,10 +457,10 @@ server <- function(input, output, session) {
       if(input$download_format_ser=="csv") {
         write.csv(ser(),file,row.names = T)
       } else {
-      ggsave(file,
-             plot = plot_ser(ser()),
-             device = input$download_format_ser,
-             width = 40, height = 20, units = "cm")
+        ggsave(file,
+               plot = plot_ser(ser()),
+               device = input$download_format_ser,
+               width = 40, height = 20, units = "cm")
       }
     }
   )
@@ -457,7 +476,7 @@ server <- function(input, output, session) {
                            input$y_axis_dimension),
                display = input$display_what,
                scaling = 3)
-        )
+      )
       test_for_export <- spread(test_for_export,
                                 key=Var2,
                                 value = value)
